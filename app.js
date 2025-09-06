@@ -4,12 +4,15 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var session = require('express-session');
+var helmet = require('helmet');
 
 var indexRouter = require('./app_server/routes/index');
 var usersRouter = require('./app_server/routes/users');
 var pagesRouter = require('./app_server/routes/pages');
 
 var app = express();
+// Disable x-powered-by header
+app.disable('x-powered-by');
 
 // view engine setup
 app.set('views', path.join(__dirname, 'app_server', 'views'));
@@ -17,13 +20,27 @@ app.set('view engine', 'jade');
 
 // middleware
 app.use(logger('dev'));
+app.use(helmet());
+app.use(helmet.contentSecurityPolicy({
+  directives: {
+    defaultSrc: ["'self'"],
+    imgSrc: ["'self'", "data:"],
+    scriptSrc: ["'self'"],
+    styleSrc: ["'self'", "'unsafe-inline'"]
+  }
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(session({
   secret: 'securemycampus',
   resave: false,
-  saveUninitialized: true
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'lax'
+  }
 }));
 app.use(express.static(path.join(__dirname, 'public')));
 
