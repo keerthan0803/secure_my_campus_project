@@ -1,5 +1,7 @@
 
 var express = require('express');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = 'securemycampusjwt';
 var router = express.Router();
 
 
@@ -27,6 +29,14 @@ router.post('/delete-complaint', function(req, res) {
 const fs = require('fs');
 const path = require('path');
 router.get('/complaint', function(req, res) {
+	let user = null;
+	if (req.cookies && req.cookies.token) {
+		try {
+			user = jwt.verify(req.cookies.token, JWT_SECRET);
+		} catch (e) {
+			user = null;
+		}
+	}
 	const filePath = path.join(__dirname, '../../data/complaints.json');
 	let complaints = [];
 	let categories = [];
@@ -49,15 +59,23 @@ router.get('/complaint', function(req, res) {
 	if (selectedCategory) {
 		filteredComplaints = complaints.filter(c => c.category === selectedCategory);
 	}
-			res.render('complaint', { title: 'Complaint', complaints: filteredComplaints, categories, selectedCategory, now, email: req.session.email });
+	res.render('complaint', { title: 'Complaint', complaints: filteredComplaints, categories, selectedCategory, now, email: user ? user.email : null });
 });
 
 // Form page
 router.get('/form', function(req, res) {
-				if (!req.session.email) {
-					return res.render('signin', { title: 'Sign In', error: 'Please sign in to access the form.', email: req.session.email });
-				}
-				res.render('form', { title: 'Form', email: req.session.email });
+					let user = null;
+					if (req.cookies && req.cookies.token) {
+						try {
+							user = jwt.verify(req.cookies.token, JWT_SECRET);
+						} catch (e) {
+							user = null;
+						}
+					}
+					if (!user) {
+						return res.render('signin', { title: 'Sign In', error: 'Please sign in to access the form.' });
+					}
+					res.render('form', { title: 'Form', email: user.email });
 });
 // Handle form submission and store data in a file
 const { saveComplaint } = require('../models/complaint');
@@ -128,10 +146,18 @@ router.post('/change-complaint-color', function(req, res) {
 	res.redirect('/complaint');
 });
 router.get('/help', function(req, res) {
-			if (!req.session.email) {
-				return res.render('signin', { title: 'Sign In', error: 'Please sign in to access the help center.', email: req.session.email });
-			}
-			res.render('help', { title: 'Help Center', email: req.session.email });
+				let user = null;
+				if (req.cookies && req.cookies.token) {
+					try {
+						user = jwt.verify(req.cookies.token, JWT_SECRET);
+					} catch (e) {
+						user = null;
+					}
+				}
+				if (!user) {
+					return res.render('signin', { title: 'Sign In', error: 'Please sign in to access the help center.' });
+				}
+				res.render('help', { title: 'Help Center', email: user.email });
 });
 // Chatbot JS for help page
 function appendMessage(sender, text, id) {
@@ -174,24 +200,22 @@ function sendToPython() {
 }
 // Profile page
 router.get('/profile', function(req, res) {
-		const filePath = path.join(__dirname, '../../data/users.json');
-		let user = null;
-		if (req.session.email && fs.existsSync(filePath)) {
-			try {
-				const users = JSON.parse(fs.readFileSync(filePath));
-				user = users.find(u => u.email === req.session.email);
-			} catch (e) {
-				user = null;
+			let user = null;
+			if (req.cookies && req.cookies.token) {
+				try {
+					user = jwt.verify(req.cookies.token, JWT_SECRET);
+				} catch (e) {
+					user = null;
+				}
 			}
-		}
-		res.render('profile', {
-			title: 'Profile',
-			email: req.session.email,
-			name: user ? user.name : '',
-			username: user ? user.username : '',
-			phone: user ? user.phone : '',
-			user: user
-		});
+			res.render('profile', {
+				title: 'Profile',
+				email: user ? user.email : '',
+				name: user ? user.name : '',
+				username: user ? user.username : '',
+				phone: user ? user.phone : '',
+				user: user
+			});
 });
 
 // Sign In page

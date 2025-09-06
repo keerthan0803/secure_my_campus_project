@@ -24,10 +24,23 @@ router.get('/signup', function(req, res) {
 });
 // Render signin page
 router.get('/signin', function(req, res) {
-  res.render('signin', { title: 'Sign In', email: req.session.email });
+  let email = '';
+  if (req.cookies && req.cookies.token) {
+    try {
+      const jwt = require('jsonwebtoken');
+      const JWT_SECRET = 'securemycampusjwt';
+      const user = jwt.verify(req.cookies.token, JWT_SECRET);
+      email = user.email;
+    } catch (e) {
+      email = '';
+    }
+  }
+  res.render('signin', { title: 'Sign In', email });
 });
 // Signup route
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = 'securemycampusjwt';
 router.post('/signup', async function(req, res) {
   const { name, username, phone, email, password, confirm_password } = req.body;
   if (!name || !username || !phone || !email || !password || password !== confirm_password) {
@@ -53,14 +66,15 @@ router.post('/signup', async function(req, res) {
 // Logout route
 router.post('/logout', function(req, res) {
   req.session.destroy(function(err) {
-    res.redirect('/');
+  res.clearCookie('token');
+  res.redirect('/');
   });
 });
 // Signin route
 router.post('/signin', async function(req, res) {
   const { email, password } = req.body;
   if (!email || !password) {
-    return res.render('signin', { title: 'Sign In', error: 'Email and password required.' });
+    return res.render('signin', { title: 'Sign In', error: 'Email and password required.', email: '' });
   }
   const filePath = path.join(__dirname, '../../data/users.json');
   let users = [];
@@ -73,12 +87,11 @@ router.post('/signin', async function(req, res) {
   }
   const user = users.find(u => u.email === email);
   if (!user || !(await bcrypt.compare(password, user.password))) {
-    return res.render('signin', { title: 'Sign In', error: 'Invalid entry. Email or password is incorrect.', email: req.session.email });
+    return res.render('signin', { title: 'Sign In', error: 'Invalid entry. Email or password is incorrect.', email: '' });
   }
-  req.session.email = user.email;
-  req.session.name = user.name;
-  req.session.username = user.username;
-  req.session.phone = user.phone;
+  // Issue JWT token
+  const token = jwt.sign({ email: user.email, name: user.name, username: user.username, phone: user.phone }, JWT_SECRET, { expiresIn: '2h' });
+  res.cookie('token', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
   res.redirect('/');
 });
 

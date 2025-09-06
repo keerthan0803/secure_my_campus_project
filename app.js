@@ -51,10 +51,32 @@ app.use('/users', usersRouter);    // user-related routes
 
 // Root-level signup and signin routes
 app.get('/signup', function(req, res) {
-  res.render('signup', { title: 'Sign Up' });
+  let email = '';
+  if (req.cookies && req.cookies.token) {
+    try {
+      const jwt = require('jsonwebtoken');
+      const JWT_SECRET = 'securemycampusjwt';
+      const user = jwt.verify(req.cookies.token, JWT_SECRET);
+      email = user.email;
+    } catch (e) {
+      email = '';
+    }
+  }
+  res.render('signup', { title: 'Sign Up', email });
 });
 app.get('/signin', function(req, res) {
-  res.render('signin', { title: 'Sign In' });
+  let email = '';
+  if (req.cookies && req.cookies.token) {
+    try {
+      const jwt = require('jsonwebtoken');
+      const JWT_SECRET = 'securemycampusjwt';
+      const user = jwt.verify(req.cookies.token, JWT_SECRET);
+      email = user.email;
+    } catch (e) {
+      email = '';
+    }
+  }
+  res.render('signin', { title: 'Sign In', email });
 });
 
 // catch 404 and forward to error handler
@@ -70,11 +92,22 @@ app.use(function (err, req, res, next) {
 
   // render the error page
   res.status(err.status || 500);
+  let email = '';
+  if (req.cookies && req.cookies.token) {
+    try {
+      const jwt = require('jsonwebtoken');
+      const JWT_SECRET = 'securemycampusjwt';
+      const user = jwt.verify(req.cookies.token, JWT_SECRET);
+      email = user.email;
+    } catch (e) {
+      email = '';
+    }
+  }
   res.render('error', {
     title: 'Error',
     message: err.message,
     error: res.locals.error,
-    email: req.session.email
+    email
   });
 });
 
