@@ -174,7 +174,24 @@ function sendToPython() {
 }
 // Profile page
 router.get('/profile', function(req, res) {
-	res.render('profile', { title: 'Profile', email: req.session.email });
+		const filePath = path.join(__dirname, '../../data/users.json');
+		let user = null;
+		if (req.session.email && fs.existsSync(filePath)) {
+			try {
+				const users = JSON.parse(fs.readFileSync(filePath));
+				user = users.find(u => u.email === req.session.email);
+			} catch (e) {
+				user = null;
+			}
+		}
+		res.render('profile', {
+			title: 'Profile',
+			email: req.session.email,
+			name: user ? user.name : '',
+			username: user ? user.username : '',
+			phone: user ? user.phone : '',
+			user: user
+		});
 });
 
 // Sign In page
